@@ -93,6 +93,36 @@ static VALUE unqlite_database_store(VALUE self, VALUE key, VALUE value)
   return Qtrue;
 }
 
+static VALUE unqlite_database_append(VALUE self, VALUE key, VALUE value)
+{
+  void *c_key;
+  void *c_value;
+  int rc;
+  unqliteRubyPtr ctx;
+
+  // Ensure the given argument is a ruby string
+  Check_Type(key, T_STRING);
+  Check_Type(value, T_STRING);
+
+  // Get class context
+  Data_Get_Struct(self, unqliteRuby, ctx);
+
+  // Transform Ruby string into C string
+  c_key = calloc(RSTRING_LEN(key), sizeof(char));
+  memcpy(c_key, StringValuePtr(key), RSTRING_LEN(key));
+
+  c_value = calloc(RSTRING_LEN(value), sizeof(char));
+  memcpy(c_value, StringValuePtr(value), RSTRING_LEN(value));
+
+  // Create or Append it
+  rc = unqlite_kv_append(ctx->pDb, c_key, -1, c_value, sizeof(c_value));
+
+  // Check for errors
+  CHECK(ctx->pDb, rc);
+
+  return Qtrue;
+}
+
 static VALUE unqlite_database_delete(VALUE self, VALUE key)
 {
   void *c_key;
@@ -216,6 +246,7 @@ void Init_unqlite_database()
   rb_define_alloc_func(cUnQLiteDatabase, allocate);
 
   rb_define_method(cUnQLiteDatabase, "store", unqlite_database_store, 2);
+  rb_define_method(cUnQLiteDatabase, "append", unqlite_database_append, 2);
   rb_define_method(cUnQLiteDatabase, "fetch", unqlite_database_fetch, 1);
   rb_define_method(cUnQLiteDatabase, "delete", unqlite_database_delete, 1);
 
